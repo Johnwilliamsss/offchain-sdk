@@ -12,22 +12,22 @@ import (
 	ethdb "github.com/ethereum/go-ethereum/ethdb"
 )
 
-// BaseApp is the base application.
+// BaseApp represents the base application.
 type BaseApp struct {
-	// name is the name of the application
+	// name is the name of the application.
 	name string
 
 	// logger is the logger for the baseapp.
 	logger log.Logger
 
-	// jobMgr
+	// jobMgr is the job manager for handling jobs.
 	jobMgr *JobManager
 
 	// svr is the server for the baseapp.
 	svr *server.Server
 }
 
-// New creates a new baseapp.
+// New creates a new BaseApp instance.
 func New(
 	name string,
 	logger log.Logger,
@@ -53,33 +53,37 @@ func New(
 	}
 }
 
-// Logger returns the logger for the baseapp.
+// Logger returns the logger for the baseapp with a namespace.
 func (b *BaseApp) Logger() log.Logger {
 	return b.logger.With("namespace", "baseapp")
 }
 
-// Start starts the baseapp.
+// Start initializes and starts the baseapp components.
 func (b *BaseApp) Start(ctx context.Context) error {
-	b.Logger().Info("attempting to start")
-	defer b.Logger().Info("successfully started")
+	b.Logger().Info("Attempting to start")
+	defer b.Logger().Info("Successfully started")
 
 	// Start the job manager and the producers.
 	b.jobMgr.Start(ctx)
 	b.jobMgr.RunProducers(ctx)
 
 	if b.svr == nil {
-		b.Logger().Info("no HTTP server registered, skipping")
+		b.Logger().Info("No HTTP server registered, skipping")
 	} else {
-		go b.svr.Start(ctx)
+		go func() {
+			if err := b.svr.Start(ctx); err != nil {
+				b.Logger().Error("HTTP server failed to start", "error", err)
+			}
+		}()
 	}
 
 	return nil
 }
 
-// Stop stops the baseapp.
+// Stop shuts down the baseapp and its components.
 func (b *BaseApp) Stop() {
-	b.Logger().Info("attempting to stop")
-	defer b.Logger().Info("successfully stopped")
+	b.Logger().Info("Attempting to stop")
+	defer b.Logger().Info("Successfully stopped")
 
 	b.jobMgr.Stop()
 	if b.svr != nil {
